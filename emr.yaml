@@ -1,0 +1,165 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EMR Demo VPC'
+Parameters:
+  vpcCidr:
+    Description: 'CIDR of the EMR VPC'
+    Type: String
+    Default: "10.10.10.0/24"
+    ConstraintDescription: 'Must be a valid CIDR'
+    #AllowedPattern: "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(\\d|[1-2]\\d|3[0-2]))?$"
+  InstanceType:
+    Type: String
+    Default: "m4.large"
+  ReleaseLabel:
+    Type: String
+    Default: "emr-5.11.0"
+  TerminationProtected:
+    Type: String
+    Default: 'false'
+  EbsRootVolumeSize:
+    Type: String
+    Default: "20"
+  SSHKeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref 'vpcCidr'
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  SubnetPublic:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref 'vpcCidr'
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join [ " ", [ !Ref AWS::StackName, "Public" ] ]
+  RouteTablePublic: # should be RouteTableAPublic, but logical id was not changed for backward compatibility
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join [ " ", [ !Ref AWS::StackName, "Public" ] ]
+  RouteTableAssociationPublic:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetPublic
+      RouteTableId: !Ref RouteTablePublic
+  RouteTablePublicInternetRoute: # should be RouteTablePublicAInternetRoute, but logical id was not changed for backward compatibility
+    Type: 'AWS::EC2::Route'
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+  EMRCluster:
+    Type: 'AWS::EMR::Cluster'
+    Properties:
+      Applications:
+        - Name: "Spark"
+        - Name: "Hadoop"
+        - Name: "Hive"
+        - Name: "Zeppelin"
+        - Name: "Pig"
+        - Name: "Hue"
+      EbsRootVolumeSize: !Ref EbsRootVolumeSize
+      Instances:
+        MasterInstanceGroup:
+          InstanceCount: 1
+          InstanceType: !Ref InstanceType
+          Market: ON_DEMAND
+          Name: EMRMaster
+        CoreInstanceGroup:
+          InstanceCount: 1
+          InstanceType: !Ref InstanceType
+          Market: SPOT
+          BidPrice: "0.100"
+          Name: EMRCore
+        TerminationProtected: !Ref TerminationProtected
+        Ec2KeyName: !Ref SSHKeyName
+        Ec2SubnetId: !Ref SubnetPublic
+      Name: EMRDemo
+      JobFlowRole: !Ref EMREC2InstanceProfile
+      ServiceRole: !Ref EMRRole
+      ReleaseLabel: !Ref ReleaseLabel
+      VisibleToAllUsers: true
+      Tags:
+        - Key: Name
+          Value: EMRDemo
+  EMRRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: elasticmapreduce.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceRole'
+  EMREC2Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role'
+  EMREC2InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EMREC2Role
+  EMRStep:
+    Type: "AWS::EMR::Step"
+    Properties:
+      ActionOnFailure: "CONTINUE"
+      HadoopJarStep:
+        Args:
+          - "5"
+          - "10"
+        Jar: "s3://emr-cfn-test/hadoop-mapreduce-examples-2.6.0.jar"
+        MainClass: "pi"
+      Name: "HadoopStep"
+      JobFlowId:
+        Ref: "EMRCluster"
+Outputs:
+  StackName:
+    Description: 'Stack name'
+    Value: !Sub '${AWS::StackName}'
+  VPC:
+    Description: 'VPC.'
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPC'
