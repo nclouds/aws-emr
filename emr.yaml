@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'EMR Demo VPC'
+Description: 'matts - EMR Demo VPC'
 Parameters:
   vpcCidr:
     Description: 'CIDR of the EMR VPC'
@@ -53,14 +53,14 @@ Resources:
       VpcId: !Ref VPC
       Tags:
       - Key: Name
-        Value: !Join [ " ", [ !Ref AWS::StackName, "Public" ] ]
+        Value: !Join [ " ", [ !Ref "AWS::StackName", "Public" ] ]
   RouteTablePublic: # should be RouteTableAPublic, but logical id was not changed for backward compatibility
     Type: 'AWS::EC2::RouteTable'
     Properties:
       VpcId: !Ref VPC
       Tags:
       - Key: Name
-        Value: !Join [ " ", [ !Ref AWS::StackName, "Public" ] ]
+        Value: !Join [ " ", [ !Ref "AWS::StackName", "Public" ] ]
   RouteTableAssociationPublic:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
