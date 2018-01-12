@@ -91,7 +91,7 @@ Resources:
           Market: ON_DEMAND
           Name: EMRMaster
         CoreInstanceGroup:
-          InstanceCount: 1
+          InstanceCount: 3
           InstanceType: !Ref InstanceType
           Market: SPOT
           BidPrice: "0.100"
