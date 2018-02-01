@@ -22,6 +22,9 @@ Parameters:
     Default: "20"
   SSHKeyName:
     Type: AWS::EC2::KeyPair::KeyName
+  OutputBucketName:
+    Type: String
+    Default: nclouds-emr-demo
 Resources:
   VPC:
     Type: 'AWS::EC2::VPC'
@@ -91,7 +94,7 @@ Resources:
           Market: ON_DEMAND
           Name: EMRMaster
         CoreInstanceGroup:
-          InstanceCount: 3
+          InstanceCount: 1
           InstanceType: !Ref InstanceType
           Market: SPOT
           BidPrice: "0.100"
@@ -100,6 +103,7 @@ Resources:
         Ec2KeyName: !Ref SSHKeyName
         Ec2SubnetId: !Ref SubnetPublic
       Name: EMRDemo
+      LogUri: !Sub 's3://aws-logs-${AWS::AccountId}-${AWS::Region}/elasticmapreduce/'
       JobFlowRole: !Ref EMREC2InstanceProfile
       ServiceRole: !Ref EMRRole
       ReleaseLabel: !Ref ReleaseLabel
@@ -141,17 +145,41 @@ Resources:
       Path: /
       Roles:
         - !Ref EMREC2Role
-  EMRStep:
+  DownloadPythonScript:
     Type: "AWS::EMR::Step"
     Properties:
       ActionOnFailure: "CONTINUE"
       HadoopJarStep:
         Args:
-          - "5"
-          - "10"
-        Jar: "s3://emr-cfn-test/hadoop-mapreduce-examples-2.6.0.jar"
-        MainClass: "pi"
-      Name: "HadoopStep"
+          - "aws"
+          - "s3"
+          - "cp"
+          - "s3://nclouds-emr-demo/demo.py"
+          - "/tmp/demo.py"
+        Jar: "/mnt/var/lib/aws/emr/step-runner/hadoop-jars/command-runner.jar"
+        MainClass: ""
+      Name: "AWSStep"
+      JobFlowId:
+        Ref: "EMRCluster"
+  ExecutePythonScript:
+    Type: "AWS::EMR::Step"
+    Properties:
+      ActionOnFailure: "CONTINUE"
+      HadoopJarStep:
+        Args:
+          - "/usr/bin/spark-submit"
+          - "--master"
+          - "yarn"
+          - "--deploy-mode"
+          - "client"
+          - "--conf"
+          - "spark.app.name=EMRDemo"
+          - "--verbose"
+          - "/tmp/demo.py"
+          - !Ref OutputBucketName
+        Jar: "/mnt/var/lib/aws/emr/step-runner/hadoop-jars/command-runner.jar"
+        MainClass: ""
+      Name: "SparkStep"
       JobFlowId:
         Ref: "EMRCluster"
 Outputs:
