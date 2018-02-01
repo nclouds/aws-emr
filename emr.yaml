@@ -94,7 +94,7 @@ Resources:
           Market: ON_DEMAND
           Name: EMRMaster
         CoreInstanceGroup:
-          InstanceCount: 1
+          InstanceCount: 2
           InstanceType: !Ref InstanceType
           Market: SPOT
           BidPrice: "0.100"
@@ -145,22 +145,6 @@ Resources:
       Path: /
       Roles:
         - !Ref EMREC2Role
-  DownloadPythonScript:
-    Type: "AWS::EMR::Step"
-    Properties:
-      ActionOnFailure: "CONTINUE"
-      HadoopJarStep:
-        Args:
-          - "aws"
-          - "s3"
-          - "cp"
-          - "s3://nclouds-emr-demo/demo.py"
-          - "/tmp/demo.py"
-        Jar: "/mnt/var/lib/aws/emr/step-runner/hadoop-jars/command-runner.jar"
-        MainClass: ""
-      Name: "AWSStep"
-      JobFlowId:
-        Ref: "EMRCluster"
   ExecutePythonScript:
     Type: "AWS::EMR::Step"
     Properties:
@@ -171,11 +155,13 @@ Resources:
           - "--master"
           - "yarn"
           - "--deploy-mode"
-          - "client"
+          - "cluster"
           - "--conf"
           - "spark.app.name=EMRDemo"
           - "--verbose"
-          - "/tmp/demo.py"
+          - "--conf"
+          - "spark.yarn.submit.waitAppCompletion=true"
+          - "s3://nclouds-emr-demo/demo.py"
           - !Ref OutputBucketName
         Jar: "/mnt/var/lib/aws/emr/step-runner/hadoop-jars/command-runner.jar"
         MainClass: ""
