@@ -1,6 +1,6 @@
 AWS EMR
 =======
-![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://console.aws.amazon.com/cloudformation/home#/stacks/new?templateURL=https://raw.githubusercontent.com/nclouds/aws-emr/master/emr.yaml)
+![[Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://console.aws.amazon.com/cloudformation/home#/stacks/new?templateURL=https://raw.githubusercontent.com/nclouds/aws-emr/master/emr.yaml)
 
 This is a small demo for getting started with AWS EMR. AWS EMR is managed Hadoop Framework with support for Apache Spark, Presto etc.,
 
