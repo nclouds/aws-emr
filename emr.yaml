@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'matts - EMR Demo VPC'
+Description: 'Nclouds - EMR Demo VPC'
 Parameters:
   vpcCidr:
     Description: 'CIDR of the EMR VPC'
@@ -161,7 +161,7 @@ Resources:
           - "--verbose"
           - "--conf"
           - "spark.yarn.submit.waitAppCompletion=true"
-          - "s3://nclouds-emr-demo/demo.py"
+          - "s3://blogs-demo/emr/demo.py"
           - !Ref OutputBucketName
         Jar: "/mnt/var/lib/aws/emr/step-runner/hadoop-jars/command-runner.jar"
         MainClass: ""
